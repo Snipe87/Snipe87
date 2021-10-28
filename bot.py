@@ -8,6 +8,7 @@ from config import URL_DADATA, TOKEN_DADATA, TOKEN_BOT, URL_LT, TOKEN_LT
 
 bot = telebot.TeleBot(TOKEN_BOT)
 
+
 def get_request_dadata(message, inn):
     headers_auth = {'Authorization': 'Token ' + TOKEN_DADATA, 'Content-Type': 'application/json'}
     auth = requests.post(URL_DADATA, headers=headers_auth)
@@ -130,8 +131,8 @@ def buttons_connect_with_org(message):
     item_yes = types.KeyboardButton('Да')
     item_no = types.KeyboardButton('Нет')
     markup_reply.add(item_yes,  item_no)
-    bot.send_message(message.chat.id, "Вас интересует данная организация?", reply_markup=markup_reply)
-
+    bot.send_message(message.chat.id, "Отправить заявку по данной организации?", reply_markup=markup_reply)
+    
 def buttons_change_param(message):
     markup_reply = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
     item_1 = types.KeyboardButton('Сделать перерасчёт')
@@ -141,144 +142,10 @@ def buttons_change_param(message):
 
 def buttons_regisrtation(message):
     markup_reply = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-    item_1 = types.KeyboardButton('Отправить заявку')
-    item_2 = types.KeyboardButton('Отменить зявку')
-    item_3 = types.KeyboardButton('Расчёт лизинговых платежей')
+    item_1 = types.KeyboardButton('Заказать обратный звонок')
+    item_2 = types.KeyboardButton('Просмотреть решение по заявке')
     markup_reply.add(item_1,  item_2)
-    markup_reply.add(item_3)
     bot.send_message(message.chat.id, "Выберите дальнейшее действие:", reply_markup=markup_reply)
-
-
-dict_inn_photo_doc={}
-def get_photo_1_from_user(message):
-    try:
-        file_info = bot.get_file(message.photo[len(message.photo) - 1].file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        src = f'files/' + file_info.file_path
-        with open(src, 'wb') as new_file:
-            new_file.write(downloaded_file)
-
-        with open(src, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read())
-
-        dict_inn_photo_doc['pic_1'] = []
-        dict_inn_photo_doc['pic_1'].append(encoded_string)
-
-        message = bot.send_message(message.chat.id, "Прикрепите ещё одно фото: ")
-        bot.register_next_step_handler(message, get_photo_2_from_user)
-
-    except Exception as e:
-        bot.reply_to(message, f'Ошибка. Попробуйте отправить снова.')
-        bot.register_next_step_handler(message, get_photo_1_from_user)
-
-def get_photo_2_from_user(message):
-    try:
-        file_info = bot.get_file(message.photo[len(message.photo) - 1].file_id)
-
-        downloaded_file = bot.download_file(file_info.file_path)
-        src = f'files/' + file_info.file_path
-        with open(src, 'wb') as new_file:
-            new_file.write(downloaded_file)
-
-        with open(src, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read())
-
-        dict_inn_photo_doc['pic_2'] = []
-        dict_inn_photo_doc['pic_2'].append(encoded_string)
-
-        message = bot.send_message(message.chat.id, "Прикрепите согласие об обраотке персональных данных: ")
-        bot.register_next_step_handler(message,  get_doc_from_user)
-
-    except Exception as e:
-        bot.reply_to(message, 'Ошибка. Попробуйте отправить снова.')
-        bot.register_next_step_handler(message, get_photo_2_from_user)
-
-def get_doc_from_user(message):
-    try:
-        file_info = bot.get_file(message.document.file_id)
-
-        downloaded_file = bot.download_file(file_info.file_path)
-        src = f'files/doc/' + message.document.file_name
-        with open(src, 'wb') as new_file:
-            new_file.write(downloaded_file)
-
-        with open(src, "rb") as doc_file:
-            encoded_string = base64.b64encode(doc_file.read())
-
-        dict_inn_photo_doc['doc'] = []
-        dict_inn_photo_doc['doc'].append(encoded_string)
-
-        data_base.table_data_user(message, dict_inn_photo_doc['inn'][0], dict_inn_photo_doc['pic_1'][0],dict_inn_photo_doc['pic_2'][0], dict_inn_photo_doc['doc'][0])
-
-        message = bot.send_message(message.from_user.id,"Введите стоимость:")
-        bot.register_next_step_handler(message, cost_for_registration)
-
-    except Exception as e:
-        bot.reply_to(message, 'Ошибка. Попробуйте отправить снова.')
-        bot.register_next_step_handler(message, get_doc_from_user)
-
-dict_calc = {}
-def cost_for_calc(message):
-    try:
-        if message.text.isdigit() and int(message.text) >= 1000000 and int(message.text) <= 20000000:
-            dict_calc['cost'] = []
-            dict_calc['cost'].append(int(message.text))
-
-            message = bot.send_message(message.from_user.id,"Введите аванс в процентах, символ - % использовать не нужно.")
-            bot.register_next_step_handler(message, prepaid_expense_for_calc)
-
-        elif message.text == "/start":
-            welcome(message)
-
-        else:
-            bot.reply_to(message, 'Недопустимое значение. Попробуйте ввести снова.')
-            bot.register_next_step_handler(message, cost_for_calc)
-
-    except Exception as e:
-        bot.reply_to(message, 'Недопустимое значение. Введите стоимость:')
-        bot.register_next_step_handler(message, cost_for_calc)
-
-def prepaid_expense_for_calc(message):
-    try:
-        if message.text.isdigit() and int(message.text) >= 0 and int(message.text) <= 100:
-            dict_calc['prepaid_expense'] = []
-            dict_calc['prepaid_expense'].append(int(message.text))
-
-            message = bot.send_message(message.from_user.id, "Введите срок лизинга в месяцах. Значение не должно превышать 60 мес. ")
-            bot.register_next_step_handler(message, period_for_calc)
-
-        elif message.text == "/start":
-            welcome(message)
-
-        else:
-            bot.reply_to(message, 'Недопустимое значение. Попробуйте ввести снова.')
-            bot.register_next_step_handler(message, prepaid_expense_for_calc)
-
-    except Exception as e:
-        bot.reply_to(message, 'Недопустимое значение. Введите аванс в процентах, символ - % использовать не нужно')
-        bot.register_next_step_handler(message, prepaid_expense_for_calc)
-
-def period_for_calc(message):
-    try:
-        if message.text.isdigit() and int(message.text)>= 12 and int(message.text) <= 60:
-            dict_calc['period'] = []
-            dict_calc['period'].append(int(message.text))
-            calculation_leasing(message)
-
-        elif message.text == "/start":
-            welcome(message)
-
-        else:
-            bot.reply_to(message, 'Недопустимое значение. Попробуйте ввести снова.')
-            bot.register_next_step_handler(message, period_for_calc)
-
-    except Exception as e:
-        bot.reply_to(message, 'Недопустимое значение. Введите срок лизинга в месяцах. Значение не должно превышать 60 мес.')
-        bot.register_next_step_handler(message, period_for_calc)
-
-def calculation_leasing(message):
-    bot.send_message(message.from_user.id,f"По параметрам которые вы указали:\n\nстоимость: {dict_calc['cost'][0]} руб.\nаванс: {dict_calc['prepaid_expense'][0]}% от стоимости\nсрок: {dict_calc['period'][0]} мес.\n\nСумма договора лизинга составляет:\nЕжемесячный платёж:\nОбщая сумма затрат с учётом выгоды по налогам:\nВозмещение НДС: ")
-    buttons_change_param(message)
 
 
 def check_inn(message):
@@ -286,98 +153,117 @@ def check_inn(message):
         welcome(message)
 
     elif message.text.isdigit() and len(message.text) == 10 or len(message.text) == 12:
-        dict_inn_photo_doc['inn'] = []
-        dict_inn_photo_doc['inn'].append(message.text)
-        get_info_from_api_lt(message, message.text)
+        #dict_inn_photo_doc['inn'] = []
+        #dict_inn_photo_doc['inn'].append(message.text)
+        #get_info_from_api_lt(message, message.text)
 
-        #get_info_about_org(message)
+        get_info_about_org(message)
     else:
         message = bot.send_message(message.from_user.id, "ИНН не корректен. Попробуйте ввести снова.")
         bot.register_next_step_handler(message, check_inn)
 
-dict_par={}
+def get_phone_user(message):
+    bot.send_message(message.chat.id, "Ваша заявка направлена на рассмотрение.\nОжидайте решения в течение 5 минут.")
+    bot.register_next_step_handler(message, welcome)
 
-def cost_for_registration(message):
-    try:
-        if message.text.isdigit() and int(message.text) >= 1000000 and int(message.text) <= 20000000:
-            dict_par['cost'] = []
-            dict_par['cost'].append(int(message.text))
-
-            message = bot.send_message(message.from_user.id, "Введите аванс в процентах, символ - % использовать не нужно.")
-            bot.register_next_step_handler(message, prepaid_expense_for_registration)
-
-        elif message.text == "/start":
-            welcome(message)
-
-        else:
-            bot.reply_to(message, 'Недопустимое значение. Попробуйте ввести снова.')
-            bot.register_next_step_handler(message, cost_for_registration)
-
-    except Exception as e:
-        bot.reply_to(message, 'Недопустимое значение. Введите стоимость:')
-        bot.register_next_step_handler(message, cost_for_registration)
-
-def prepaid_expense_for_registration(message):
-    try:
-        if message.text.isdigit() and int(message.text) >= 0 and int(message.text) <= 100:
-            dict_par['prepaid_expense'] = []
-            dict_par['prepaid_expense'].append(int(message.text))
-
-            message = bot.send_message(message.from_user.id, "Введите срок лизинга в месяцах. Значение не должно превышать 60 мес. ")
-            bot.register_next_step_handler(message, period_for_registration)
-
-        elif message.text == "/start":
-            welcome(message)
-
-        else:
-            bot.reply_to(message, 'Недопустимое значение. Попробуйте ввести снова.')
-            bot.register_next_step_handler(message, prepaid_expense_for_registration)
-    except Exception as e:
-        bot.reply_to(message, 'Недопустимое значение. Введите аванс в процентах, символ - % использовать не нужно')
-        bot.register_next_step_handler(message, prepaid_expense_for_registration)
-
-def period_for_registration(message):
-    try:
-        if message.text.isdigit() and int(message.text)>= 12 and int(message.text) <= 60:
-            dict_calc['period'] = []
-            dict_calc['period'].append(int(message.text))
-            send_offer(message)
-
-        elif message.text == "/start":
-            welcome(message)
-
-        else:
-            bot.reply_to(message, 'Недопустимое значение. Попробуйте ввести снова.')
-            bot.register_next_step_handler(message, period_for_registration)
-    except Exception as e:
-        bot.reply_to(message, 'Недопустимое значение. Введите срок лизинга в месяцах. Значение не должно превышать 60 мес.')
-        bot.register_next_step_handler(message, period_for_registration)
-
-
-def send_offer(message):
-    bot.send_message(message.chat.id, "Оферта: ляляляля")
-    buttons_regisrtation(message)
-
+def get_lead(message):
+    bot.send_message(message.chat.id, "Специалист свяжется с Вами в ближайшее время.")
+    bot.send_message(chat.id='@LeadSmartLeasing', "Новая заявка ;)")
+    bot.register_next_step_handler(message, send_telegram)
+    
 dict_user = {}
-def name_user(message):
+def surname_user(message):
     if message.text == "/start":
         welcome(message)
     else:
-        dict_user['name'] = []
-        dict_user['name'].append(message.text)
-        bot.send_message(message.chat.id, f"Приятно познакомиться, {name_user}!")
-        message = bot.send_message(message.from_user.id, "Введите электронную почту:")
-        bot.register_next_step_handler(message, email_user)
+        dict_user['surname'] = []
+        dict_user['surname'].append(message.text)
+        bot.send_message(message.chat.id, "Имя: ")
+        bot.register_next_step_handler(message, firstname_user)
 
-def email_user(message):
+def firstname_user(message):
     if message.text == "/start":
         welcome(message)
     else:
-        dict_user['email'] =[]
-        dict_user['email'].append(message.text)
-        message = bot.send_message(message.from_user.id, "Введите ваш номер телефона:")
+        dict_user['firstname'] =[]
+        dict_user['firstname'].append(message.text)
+        message = bot.send_message(message.from_user.id, "Отчетство: ")
+        bot.register_next_step_handler(message, secondname_user)
+
+def secondname_user(message):
+    if message.text == "/start":
+        welcome(message)
+    else:
+        dict_user['secondname_user'] =[]
+        dict_user['secondname_user'].append(message.text)
+        message = bot.send_message(message.from_user.id, "Дата рождения: ")
+        bot.register_next_step_handler(message, birthdaydate_user)
+
+def birthdaydate_user(message):
+    if message.text == "/start":
+        welcome(message)
+    else:
+        dict_user['birthdaydate_user'] =[]
+        dict_user['birthdaydate_user'].append(message.text)
+        message = bot.send_message(message.from_user.id, "Место рождения: ")
+        bot.register_next_step_handler(message, birthdaylocate_user)
+
+def birthdaylocate_user(message):
+    if message.text == "/start":
+        welcome(message)
+    else:
+        dict_user['birthdaylocate_user'] =[]
+        dict_user['birthdaylocate_user'].append(message.text)
+        message = bot.send_message(message.from_user.id, "ИНН руководителя: ")
+        bot.register_next_step_handler(message, inn_user)
+def inn_user(message):
+    if message.text == "/start":
+        welcome(message)
+    else:
+        dict_user['inn_user'] =[]
+        dict_user['inn_user'].append(message.text)
+        message = bot.send_message(message.from_user.id, "Серия и номер паспорта (без пробелов): ")
+        bot.register_next_step_handler(message, passportumber_user)
+def passportumber_user(message):
+    if message.text == "/start":
+        welcome(message)
+    else:
+        dict_user['passportumber_user'] =[]
+        dict_user['passportumber_user'].append(message.text)
+        message = bot.send_message(message.from_user.id, "Дата выдачи паспорта: ")
+        bot.register_next_step_handler(message, passportdate_user)
+def passportdate_user(message):
+    if message.text == "/start":
+        welcome(message)
+    else:
+        dict_user['passportdate_user'] =[]
+        dict_user['passportdate_user'].append(message.text)
+        message = bot.send_message(message.from_user.id, "Место выдачи паспорта: ")
+        bot.register_next_step_handler(message, passportplace_user)
+def passportplace_user(message):
+    if message.text == "/start":
+        welcome(message)
+    else:
+        dict_user['passportplace_user'] =[]
+        dict_user['passportplace_user'].append(message.text)
+        message = bot.send_message(message.from_user.id, "Код подразделения: ")
+        bot.register_next_step_handler(message, passportcode_user)
+def passportcode_user(message):
+    if message.text == "/start":
+        welcome(message)
+    else:
+        dict_user['passportcode_user'] =[]
+        dict_user['passportcode_user'].append(message.text)
+        message = bot.send_message(message.from_user.id, "Адрес регистрации руководителя: ")
+        bot.register_next_step_handler(message, address_user)
+def address_user(message):
+    if message.text == "/start":
+        welcome(message)
+    else:
+        dict_user['address_user'] =[]
+        dict_user['address_user'].append(message.text)
+        message = bot.send_message(message.from_user.id, "Мобильный телефон: ")
         bot.register_next_step_handler(message, phone_user)
-
 
 def phone_user(message):
     if message.text == "/start":
@@ -385,54 +271,59 @@ def phone_user(message):
     else:
         dict_user['phone'] = []
         dict_user['phone'].append(message.text)
-        data_base.table_user(message, dict_user['name'][0], dict_user['email'][0], dict_user['phone'][0])
+        #data_base.table_user(message, dict_user['surname'][0], dict_user['firstname'][0], dict_user['secondname'][0], dict_user['birthdaydate'][0], dict_user['birthdaylocate'][0], dict_user['inn'][0], dict_user['passportumber'][0], dict_user['passportdate'][0], dict_user['passportplace'][0], dict_user['passportcode'][0], dict_user['address'][0], dict_user['phone'][0])
         message = bot.send_message(message.from_user.id, "Введите ИНН организации: ")
         bot.register_next_step_handler(message, check_inn)
 
 @bot.message_handler(commands=['start'])
 def welcome(message):
-    text_start = "Добрый день, {}! Мы поможем составить для вас график лизинговых платежей...\nДля получения оферты вам нужно будет предоставить:\n\n\t-ИНН Юр. Лица или ИП\n\t-Сканы паспорта. Необходимо прикрепить 2 страницы паспорта.\n\t-Согласие на обработку персональных данных. Прикрепленный документ должен быть в формате PDF\n\nДалее вам нужно будет указать параметры лизинговой сделки:\n\n\t -стоимость\n\t -аванс\n\t -срок".format(message.from_user.first_name)
+    text_start = "Добрый день, {}!\n\t-Мы поможем сформировать заявку на лизинг\n\n\n (потребуется внести реквизиты компании \nи заполнить паспортные данные руководителя.\n\n\t-Для действующих Клиентов отобразим доступный лимит.".format(message.from_user.first_name)
     bot.send_message(message.chat.id, text_start)
     markup_reply = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    item_leasing_payment = types.KeyboardButton('Расчёт лизинговых платежей')
-    item_call = types.KeyboardButton('Оформить зявку на лизинг')
+    item_leasing_payment = types.KeyboardButton('Доступный лимит')
+    item_call = types.KeyboardButton('Оформить заявку')
     markup_reply.add(item_leasing_payment, item_call)
     bot.send_message(message.chat.id, "Нажмите на кнопку, чтобы начать", reply_markup=markup_reply)
 
-
+def send_telegram(message):
+    text1 = dict_user[surname]
+    text2 = dict_user[firstname]
+    text3 = dict_user[secondname]
+    text4 = dict_user[birthdaydate]
+    text5 = dict_user[address]
+    text6 = dict_user[phone]
+    bot.send_message(chat.id='@LeadSmartLeasing', "Новая заявка" '\n'text1'\n' + text2'\n' + text3'\n' + text4'\n' + text5'\n' + text6)
+    
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
-    if message.text == "Оформить зявку на лизинг":
-        if data_base.check_in_field(message.chat.id) is None:
-            a = telebot.types.ReplyKeyboardRemove()
-            message = bot.send_message(message.from_user.id, "Введите ФИО: ", reply_markup=a)
-            bot.register_next_step_handler(message, name_user)
-        else:
-            a = telebot.types.ReplyKeyboardRemove()
-            message = bot.send_message(message.from_user.id, "Введите ИНН: ", reply_markup=a)
-            bot.register_next_step_handler(message, check_inn)
-
+    if message.text == "Оформить заявку":
+        a = telebot.types.ReplyKeyboardRemove()
+        message = bot.send_message(message.from_user.id, "Введите данные руководителя\n\nФамилия: ", reply_markup=a)
+        bot.register_next_step_handler(message, surname_user)
+        
     elif message.text == "Да":
         a = telebot.types.ReplyKeyboardRemove()
-        message = bot.send_message(message.from_user.id, 'Загрузите фото паспорта: ', reply_markup=a)
-        bot.register_next_step_handler(message, get_photo_1_from_user)
+        message = bot.send_message(message.from_user.id, 'На указанный номер мобильного телефона направлен код подтверждения.\nВведите код подтверждения: ', reply_markup=a)
+        bot.register_next_step_handler(message, get_phone_user)
 
     elif message.text == "Нет":
         a = telebot.types.ReplyKeyboardRemove()
         message = bot.send_message(message.from_user.id, "Проверьте верно ли вы указали ИНН. Введите снова: ", reply_markup=a)
         bot.register_next_step_handler(message, check_inn)
 
-    elif message.text == 'Расчёт лизинговых платежей':
-        bot.send_message(message.from_user.id, "Для рассчёта лизингового платежа, вам необходимо укакзать несколько параметров:\n\n - стоимость (в руб.)\n - аванс (в %)\n - срок (может варьироваться от 12 мес. до 60 мес.)")
+    elif message.text == 'Доступный лимит':
+        a = telebot.types.ReplyKeyboardRemove()
+        message = bot.send_message(message.from_user.id, "Введите ИНН:", reply_markup=a)
+        bot.register_next_step_handler(message, check_inn)
+
+    elif message.text == 'Заказать обратный звонок':
         a = telebot.types.ReplyKeyboardRemove()
         message = bot.send_message(message.from_user.id, "Введите стоимость в рублях", reply_markup=a)
-        bot.register_next_step_handler(message, cost_for_calc)
-
-    elif message.text == 'Сделать перерасчёт':
+        bot.register_next_step_handler(message, get_lead)
+    elif message.text == 'Просмотреть решение по заявке':
         a = telebot.types.ReplyKeyboardRemove()
-        message = bot.send_message(message.from_user.id, "Введите стоимость в рублях", reply_markup=a)
-        bot.register_next_step_handler(message, cost_for_calc)
-
+        message = bot.send_message(message.from_user.id, "Введите ИНН:", reply_markup=a)
+        bot.register_next_step_handler(message, get_info_from_api_lt)
     elif message.text == 'Отменить зявку':
         pass
         data_base.delete_from_data_user()
